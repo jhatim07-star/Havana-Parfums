@@ -73,13 +73,13 @@ body {
 
 .promo-text {
   color: #ffffff;
-  font-size: 15px; /* Kbert l-ktba chwiya */
-  font-weight: 700; /* Drt l-ktba 3rida */
+  font-size: 15px;
+  font-weight: 700;
   direction: rtl;
   padding: 4px 12px;
-  border: 1px solid rgba(212, 175, 55, 0.5); /* Cadre d'heb sghir */
+  border: 1px solid rgba(212, 175, 55, 0.5);
   border-radius: 4px;
-  white-space: nowrap; /* Bach mat9semch f telephone */
+  white-space: nowrap;
 }
 
 .actions {
@@ -193,6 +193,68 @@ body {
     align-items: center;
     justify-content: center;
     gap: 10px;
+}
+
+/* FORM MODAL */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 2001;
+  left: 0; top: 0; width: 100%; height: 100%;
+  background-color: rgba(0,0,0,0.8);
+  backdrop-filter: blur(5px);
+}
+
+.modal-content {
+  background-color: #fff;
+  margin: 5% auto;
+  padding: 25px;
+  border-radius: 15px;
+  width: 90%;
+  max-width: 450px;
+  position: relative;
+}
+
+.modal-content h3 { margin-top: 0; color: var(--gold); }
+
+.modal-form input, .modal-form textarea {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.summary-box {
+    background: #f9f9f9;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    border-left: 4px solid var(--gold);
+    margin-bottom: 15px;
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+.btn-valider {
+    width: 100%;
+    background-color: var(--gold);
+    color: #000;
+    border: none;
+    padding: 14px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close-modal {
+    position: absolute;
+    right: 20px;
+    top: 15px;
+    font-size: 24px;
+    cursor: pointer;
 }
 
 /* PRODUITS */
@@ -313,8 +375,8 @@ body {
               <span>30 DH</span>
             </div>
             <h4 class="total-final">Total à payer: <span id="total">0</span> DH</h4>
-            <button class="btn-commander" onclick="envoyerCommande()">
-                <i class="fab fa-whatsapp"></i> Commander
+            <button class="btn-commander" onclick="ouvrirModal()">
+                <i class="fas fa-check-circle"></i> Commander
             </button>
         </div>
     </div>
@@ -325,6 +387,21 @@ body {
   </div>
 
   <div id="produits"></div>
+</div>
+
+<!-- MODAL FORM -->
+<div id="orderModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="fermerModal()">&times;</span>
+        <h3>Finaliser votre commande</h3>
+        <div id="orderSummary" class="summary-box"></div>
+        <form id="googleForm" class="modal-form">
+            <input type="text" id="nom" placeholder="Nom et Prénom" required>
+            <input type="text" id="ville" placeholder="Ville" required>
+            <input type="text" id="localisation" placeholder="Adresse / Localisation" required>
+            <button type="submit" class="btn-valider" id="btnValider">Confirmer l'achat</button>
+        </form>
+    </div>
 </div>
 
 <a href="https://wa.me/212614740712" class="whatsapp-float" target="_blank"><i class="fab fa-whatsapp"></i></a>
@@ -369,18 +446,10 @@ function afficherProduits(cat = "homme") {
 function ajouter(id) {
   let allProducts = [...data.homme, ...data.femme];
   let produit = allProducts.find(p => p.id === id);
-  
-  if (!panier[id]) {
-    panier[id] = { ...produit, qte: 0 };
-  }
+  if (!panier[id]) { panier[id] = { ...produit, qte: 0 }; }
   panier[id].qte++;
-  
   document.getElementById("panier").style.display = "block";
   afficherPanier();
-  
-  if(window.innerWidth < 768) {
-     document.getElementById("panier").scrollIntoView({ behavior: 'smooth' });
-  }
 }
 
 function disminuir(id) {
@@ -425,31 +494,64 @@ function afficherPanier() {
 
 function togglePanier() {
   const p = document.getElementById("panier");
-  if (p.style.display === "none" || p.style.display === "") {
-    p.style.display = "block";
-    afficherPanier();
-  } else {
-    p.style.display = "none";
-  }
+  p.style.display = (p.style.display === "none" || p.style.display === "") ? "block" : "none";
+  if(p.style.display === "block") afficherPanier();
 }
 
-function envoyerCommande() {
+/* MODAL LOGIC */
+function ouvrirModal() {
+    const modal = document.getElementById("orderModal");
+    const summary = document.getElementById("orderSummary");
     let items = Object.values(panier);
-    let totalProduits = 0;
-    let message = "*Nouvelle Commande - Havana Parfums*\n\n";
+    let txt = "<strong>Votre commande:</strong><br>";
+    items.forEach(p => { txt += `- ${p.nom} (x${p.qte})<br>`; });
+    txt += `<strong>Total: ${document.getElementById("total").innerText} DH</strong>`;
     
-    items.forEach(p => {
-        message += `📍 *${p.nom}* (x${p.qte}) : ${p.prix * p.qte} DH\n`;
-        totalProduits += p.prix * p.qte;
-    });
-
-    message += `\n--------------------------\n`;
-    message += `🛒 Total produits : ${totalProduits} DH\n`;
-    message += `🚚 Livraison : ${FRAIS_LIVRAISON} DH\n`;
-    message += `💰 *TOTAL FINAL : ${totalProduits + FRAIS_LIVRAISON} DH*`;
-    
-    window.open(`https://wa.me/212614740712?text=${encodeURIComponent(message)}`, '_blank');
+    summary.innerHTML = txt;
+    modal.style.display = "block";
 }
+
+function fermerModal() {
+    document.getElementById("orderModal").style.display = "none";
+}
+
+// Google Sheets Integration
+document.getElementById("googleForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const btn = document.getElementById("btnValider");
+    btn.innerText = "Envoi en cours...";
+    btn.disabled = true;
+
+    let items = Object.values(panier);
+    let commandeTxt = items.map(p => `${p.nom} (x${p.qte})`).join(", ");
+    
+    const data = {
+        nom: document.getElementById("nom").value,
+        ville: document.getElementById("ville").value,
+        localisation: document.getElementById("localisation").value,
+        commande: commandeTxt,
+        total: document.getElementById("total").innerText + " DH"
+    };
+
+    // KHASSEK T-BEDEL HAD L-URL B DIAL GOOGLE APPS SCRIPT
+    fetch('https://script.google.com/macros/s/AKfycbwcWO4lCzk-Rzz8Ef7WYqoP72E0EDFLA7Dlf7ujqhF9ospZqldpYPYtyZ58vyWStmUX/exec', {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }).then(() => {
+        alert("Commande reçue ! Nous vous contacterons bientôt.");
+        panier = {};
+        afficherPanier();
+        fermerModal();
+        togglePanier();
+        btn.innerText = "Confirmer l'achat";
+        btn.disabled = false;
+    }).catch(err => {
+        alert("Erreur lors de l'envoi. Réessayez.");
+        btn.disabled = false;
+    });
+});
 
 afficherProduits();
 </script>
